@@ -5,18 +5,20 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from my_functions import *
+import time
+import json
 
 # TODO: Refactor
 
 # If modifying these scopes, delete the file token.json.
 SCOPES = ['https://mail.google.com/']
-#SCOPES = ['https://www.googleapis.com/auth/gmail.readonly']
+# SCOPES = ['https://www.googleapis.com/auth/gmail.readonly']
 
 
 def main():
-    """Shows basic usage of the Gmail API.
-    Lists the user's Gmail labels.
-    """
+    # TODO: Check why sometimes credetinals don't refresh and determine
+    # under what circustances token.json should be removed
+
     creds = None
     # The file token.json stores the user's access and refresh tokens, and is
     # created automatically when the authorization flow completes for the first
@@ -35,24 +37,11 @@ def main():
         with open('token.json', 'w') as token:
             token.write(creds.to_json())
 
+    # if credetials are valid, we build an object with access to the gmail API
     service = build('gmail', 'v1', credentials=creds)
 
-
-    print("We have succesfully gain access to your gmail accout 👌.\n",
-          "Be careful in how you use this program. \n",
-          "Some changes are IRREVERSIBLE 😬.\n")
-
-
-    def choose_a_number():
-        while True:
-            try:
-                answer = int(input(("How many unread messages would you"
-                                    "like to delete: (type an integer)")))
-                return answer
-            except ValueError:
-                print("Your answer is invalid. Please enter an integer number")
-
-
+    # Welcome the user and ask for an input
+    print_message("welcome")
     answer = choose_a_number()
     total_delations = answer
 
@@ -62,11 +51,13 @@ def main():
     https://googleapis.github.io/google-api-python-client/docs/dyn/gmail_v1.users.messages.html
 
 
-        - list(userId, includeSpamTrash=None, labelIds=None, maxResults=None, pageToken=None, q=None, x__xgafv=None)
+        - list(userId, includeSpamTrash=None,
+               labelIds=None, maxResults=None,
+               pageToken=None, q=None, x__xgafv=None)
 
         - batchDelete(userId, body=None, x__xgafv=None)
-            for the body, we will create a an id_list with the list() method,
-            which is defined in my_functions.py
+            for the body, we will create a an id_list with the list()
+            method, which is defined in my_functions.py
 
     """
 
@@ -84,20 +75,22 @@ def main():
 
     else:
         '''
-        When greater than 1000 emails, we will first delete the the remainder,
+        When greater than 1000 emails, we will first delete the remainder,
         eg: if there are 1500 emails, we will delete 500 first, and then
         by the thousands.
         '''
 
         remainder = answer % 1000
         answer -= remainder  # set new value for the while loop
-
+        # 2500 - 500 = 2000
         my_messages_object.batchDelete(
                             userId='me',
                             body={"ids": create_id_list(
                                                 apiObject=my_messages_object,
                                                 maxResults=remainder,
                                                 q="is:unread")}).execute()
+
+        time.sleep(7)
 
         while answer > 0:
 
@@ -108,22 +101,10 @@ def main():
                                                 maxResults=1000,
                                                 q="is:unread")}).execute()
             answer -= 1000
+            time.sleep(7)
 
-    print((f"We have deleted {total_delations} messages!"
-          "I hope we saved you precious time! 😅"))
+    print_message("summary", total_delations)
 
-
-
-    # Call the Gmail API - GMAIL EXAMPLE
-    '''results = service.users().labels().list(userId='me').execute()
-    labels = results.get('labels', [])
-
-    if not labels:
-        print('No labels found.')
-    else:
-        print('Labels:')
-        for label in labels:
-            print(label['name'])'''
 
 if __name__ == '__main__':
     main()
